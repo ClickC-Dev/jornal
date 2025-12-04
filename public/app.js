@@ -58,10 +58,20 @@ async function generate() {
   form.append('journal', journalFile)
   backsFiles.forEach(f => form.append('backs', f))
 
-  const res = await fetch('/api/gerador', { method: 'POST', body: form })
+  // health check opcional
+  try { await fetch(`${window.API_BASE}/api/health`).catch(() => {}) } catch {}
+
+  let res
+  try {
+    res = await fetch(`${window.API_BASE}/api/gerador`, { method: 'POST', body: form })
+  } catch (networkErr) {
+    alert('Servidor indisponível ou bloqueio de upload. Verifique sua conexão e tente novamente.')
+    showStep(3)
+    return
+  }
   const jobId = res.headers.get('x-job-id')
   if (jobId) {
-    const sse = new EventSource(`/api/gerador/progresso?jobId=${encodeURIComponent(jobId)}`)
+    const sse = new EventSource(`${window.API_BASE}/api/gerador/progresso?jobId=${encodeURIComponent(jobId)}`)
     sse.addEventListener('progress', e => {
       try {
         const { percent } = JSON.parse(e.data)
@@ -72,7 +82,17 @@ async function generate() {
     sse.addEventListener('done', () => sse.close())
   }
   if (!res.ok) {
-    alert('Falha ao gerar PDFs')
+    try {
+      const txt = await res.text()
+      let msg = 'Falha ao gerar PDFs'
+      if (res.status === 400) msg = 'Arquivos inválidos: ' + txt
+      else if (res.status === 404) msg = 'Endpoint indisponível. O servidor não está servindo /api/gerador.'
+      else if (res.status === 413) msg = 'Upload muito grande: o servidor/proxy recusou (413). Tente menos arquivos ou ajuste o limite do servidor.'
+      else if (txt) msg += `\n${txt}`
+      alert(msg)
+    } catch {
+      alert('Falha ao gerar PDFs')
+    }
     showStep(3)
     return
   }

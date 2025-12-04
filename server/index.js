@@ -90,6 +90,10 @@ app.get('/api/gerador/progresso', (req, res) => {
   res.write(`data: ${JSON.stringify({ processed: current.processed, total: current.total, percent: current.percent })}\n\n`)
 })
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' })
+})
+
 app.post('/api/gerador', upload.fields([
   { name: 'covers', maxCount: 500 },
   { name: 'journal', maxCount: 1 },
