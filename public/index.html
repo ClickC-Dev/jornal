@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gerador de Jornal Digital</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Gerador de Jornal Digital</h1>
+
+      <div id="wizard">
+        <div class="step" data-step="1">
+          <div class="card">
+            <p>Olá, me manda aqui os arquivos das capas, por favor 😊</p>
+            <label class="dropzone">
+              <input id="covers" type="file" accept="image/png" multiple />
+              <span>Clique para enviar ou arraste e solte<br/>Formatos aceitos: .png</span>
+            </label>
+            <div class="counter"><span id="covers-count">0</span> capas selecionadas</div>
+            <div class="actions">
+              <button id="next-1" class="primary">Próximo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-step="2" hidden>
+          <div class="card">
+            <p>Qual será o conteúdo desse mês? 📄</p>
+            <label class="dropzone">
+              <input id="journal" type="file" accept="application/pdf" />
+              <span>Envie o PDF do Jornal</span>
+            </label>
+            <div class="counter" id="journal-name">Nenhum arquivo selecionado</div>
+            <div class="actions space">
+              <button id="prev-2" class="ghost">Voltar</button>
+              <button id="next-2" class="primary">Próximo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-step="3" hidden>
+          <div class="card">
+            <p>Perfeito! Agora me envia as Contracapas, por favor…</p>
+            <label class="dropzone">
+              <input id="backs" type="file" accept="application/pdf" multiple />
+              <span>Envie uma ou várias Contracapas (.pdf com links)</span>
+            </label>
+            <div class="counter"><span id="backs-count">0</span> contracapas selecionadas</div>
+            <div class="actions space">
+              <button id="prev-3" class="ghost">Voltar</button>
+              <button id="next-3" class="primary">Próximo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-step="4" hidden>
+          <div class="card">
+            <p>Processando os arquivos… Isso pode levar alguns segundos. 🌀</p>
+            <div class="progress">
+              <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+            </div>
+            <div class="counter"><span id="progress-text">0%</span></div>
+            <div class="actions">
+              <button id="prev-4" class="ghost" disabled>Voltar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-step="5" hidden>
+          <div class="card">
+            <p>Tudo pronto! 👏 Aqui estão seus arquivos PDF gerados com sucesso.</p>
+            <div class="actions space">
+              <a id="download-link" class="primary" download>Baixar arquivos em ZIP</a>
+              <button id="restart" class="ghost">Gerar novamente</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <a href="https://github.com/ClickC-Dev/jornal" target="_blank" rel="noopener">GitHub: ClickC-Dev/jornal</a>
+      </footer>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

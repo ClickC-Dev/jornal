@@ -1,0 +1,21 @@
+{
+  "name": "gerador-jornal-digital",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "repository": "https://github.com/ClickC-Dev/jornal",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js"
+  },
+  "dependencies": {
+    "archiver": "^6.0.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
