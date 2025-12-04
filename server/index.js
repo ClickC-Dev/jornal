@@ -4,7 +4,7 @@ import multer from 'multer'
 import archiver from 'archiver'
 import { PDFDocument } from 'pdf-lib'
 import path from 'path'
-import { sanitizeBaseName, pickBackIndex } from './lib.js'
+import { sanitizeBaseName, pickBackIndex, zipSafeName } from './lib.js'
 
 const app = express()
 const upload = multer({ storage: multer.memoryStorage() })
@@ -23,28 +23,10 @@ function isJpg(buf) {
   return buf && buf.length > 2 && buf[0] === 0xFF && buf[1] === 0xD8
 }
 
-async function computeTargetSize(journalPdf, backFiles) {
+async function computeTargetSize(journalPdf) {
   const jp = journalPdf.getPages()
-  let maxW = jp.length ? jp[0].getSize().width : 595.28
-  let maxH = jp.length ? jp[0].getSize().height : 841.89
-  for (const p of jp) {
-    const s = p.getSize()
-    maxW = Math.max(maxW, s.width)
-    maxH = Math.max(maxH, s.height)
-  }
-  for (const f of backFiles) {
-    try {
-      if ((f.mimetype || '').startsWith('application/pdf')) {
-        const backPdf = await PDFDocument.load(f.buffer)
-        for (const bp of backPdf.getPages()) {
-          const s = bp.getSize()
-          maxW = Math.max(maxW, s.width)
-          maxH = Math.max(maxH, s.height)
-        }
-      }
-    } catch {}
-  }
-  return { width: maxW, height: maxH }
+  const size = jp.length ? jp[0].getSize() : { width: 595.28, height: 841.89 }
+  return { width: size.width, height: size.height }
 }
 
 async function embedImageAuto(out, file) {
@@ -149,13 +131,13 @@ app.post('/api/gerador', upload.fields([
     })
     archive.pipe(res)
 
-    const target = await computeTargetSize(journalPdf, backs)
+    const target = await computeTargetSize(journalPdf)
     for (let i = 0; i < covers.length; i++) {
       const cover = covers[i]
       const backIdx = pickBackIndex(i, covers.length, backs.length)
       const back = backs[backIdx]
       const pdfBytes = await buildPdf(cover, journalPdf, back, target)
-      const name = `${sanitizeBaseName(cover.originalname)} - ${sanitizeBaseName(journal.originalname)}.pdf`
+      const name = `${zipSafeName(cover.originalname)} - ${zipSafeName(journal.originalname)}.pdf`
       archive.append(Buffer.from(pdfBytes), { name })
       setProgress(jobId, { processed: i + 1, total })
     }

@@ -11,3 +11,11 @@ function pickBackIndex(i, coversLen, backsLen) {
 }
 
 export { sanitizeBaseName, pickBackIndex }
+
+function zipSafeName(name) {
+  const n = sanitizeBaseName(name)
+  const nf = n.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return nf
+}
+
+export { zipSafeName }
