@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import multer from 'multer'
 import archiver from 'archiver'
+import { ZipFile } from 'yazl'
 import { PDFDocument } from 'pdf-lib'
 import path from 'path'
 import { sanitizeBaseName, pickBackIndex } from './lib.js'
@@ -47,12 +48,8 @@ async function buildPdf(coverFile, journalPdf, backFile, target) {
 
   if ((backFile.mimetype || '').startsWith('application/pdf')) {
     const backPdf = await PDFDocument.load(backFile.buffer)
-    const indices = backPdf.getPageIndices()
-    for (const idx of indices) {
-      const [embedded] = await out.embedPages([backPdf.getPage(idx)])
-      const page = out.addPage([target.width, target.height])
-      page.drawPage(embedded, { x: 0, y: 0, width: target.width, height: target.height })
-    }
+    const backCopies = await out.copyPages(backPdf, backPdf.getPageIndices())
+    backCopies.forEach(p => { out.addPage(p); p.setSize(target.width, target.height) })
   } else {
     const backImg = await embedImageAuto(out, backFile)
     const backPage = out.addPage([target.width, target.height])
@@ -126,12 +123,12 @@ app.post('/api/gerador', upload.fields([
     res.setHeader('Content-Type', 'application/zip')
     res.setHeader('Content-Disposition', `attachment; filename="jornais-${new Date().toISOString().slice(0,10)}.zip"`)
 
-    const archive = archiver('zip', { zlib: { level: 9 } })
-    archive.on('error', err => {
+    const zip = new ZipFile()
+    zip.outputStream.on('error', () => {
       setProgress(jobId, { done: true })
-      res.status(500).end()
+      try { res.end() } catch {}
     })
-    archive.pipe(res)
+    zip.outputStream.pipe(res)
 
     const target = await computeTargetSize()
     for (let i = 0; i < covers.length; i++) {
@@ -140,15 +137,12 @@ app.post('/api/gerador', upload.fields([
       const back = backs[backIdx]
       const pdfBytes = await buildPdf(cover, journalPdf, back, target)
       const name = `${sanitizeBaseName(cover.originalname)} - ${sanitizeBaseName(journal.originalname)}.pdf`
-      archive.append(Buffer.from(pdfBytes), { name })
+      zip.addBuffer(Buffer.from(pdfBytes), name, { compress: true })
       setProgress(jobId, { processed: i + 1, total })
     }
 
-    archive.finalize().then(() => {
-      setProgress(jobId, { done: true })
-    }).catch(() => {
-      setProgress(jobId, { done: true })
-    })
+    zip.end()
+    setProgress(jobId, { done: true })
   } catch (err) {
     res.status(500).json({ error: 'Falha ao processar arquivos', details: String(err?.message || err) })
   }
