@@ -5,7 +5,7 @@ import archiver from 'archiver'
 import { ZipFile } from 'yazl'
 import { PDFDocument, PDFName, PDFArray, PDFDict, PDFString, PDFHexString, PDFNumber } from 'pdf-lib'
 import path from 'path'
-import { sanitizeBaseName, pickBackIndex } from './lib.js'
+import { sanitizeBaseName, pickBackIndex, zipSafeName } from './lib.js'
 
 const app = express()
 const upload = multer({ storage: multer.memoryStorage() })
@@ -223,7 +223,7 @@ app.post('/api/gerador', upload.fields([
       const back = backs[backIdx]
       const target = await computeTargetSizeFromBack(back)
       const pdfBytes = await buildPdf(cover, journalPdf, back, target)
-      const name = `${sanitizeBaseName(cover.originalname)} - ${sanitizeBaseName(journal.originalname)}.pdf`
+      const name = `${zipSafeName(cover.originalname)} - ${zipSafeName(journal.originalname)}.pdf`
       zip.addBuffer(Buffer.from(pdfBytes), name, { compress: true })
       setProgress(jobId, { processed: i + 1, total })
     }

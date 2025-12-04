@@ -84,6 +84,7 @@ async function generate() {
       } catch {}
     })
     sse.addEventListener('done', () => sse.close())
+    sse.onerror = () => {}
   }
   if (!res.ok) {
     try {
