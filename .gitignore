@@ -1,0 +1,33 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Coverage
+coverage
+.nyc_output
+
+# Node modules
+node_modules/
+
+# Env
+.env
+.env.*
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Build artifacts
+dist/
+build/
+
