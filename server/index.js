@@ -3,7 +3,7 @@ import cors from 'cors'
 import multer from 'multer'
 import archiver from 'archiver'
 import { ZipFile } from 'yazl'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFArray, PDFDict, PDFString, PDFHexString, PDFNumber } from 'pdf-lib'
 import path from 'path'
 import { sanitizeBaseName, pickBackIndex } from './lib.js'
 
@@ -24,7 +24,17 @@ function isJpg(buf) {
   return buf && buf.length > 2 && buf[0] === 0xFF && buf[1] === 0xD8
 }
 
-async function computeTargetSize() {
+async function computeTargetSizeFromBack(backFile) {
+  if ((backFile.mimetype || '').startsWith('application/pdf')) {
+    try {
+      const backPdf = await PDFDocument.load(backFile.buffer)
+      const pages = backPdf.getPages()
+      if (pages.length) {
+        const s = pages[0].getSize()
+        return { width: s.width, height: s.height }
+      }
+    } catch {}
+  }
   return { width: 595.28, height: 841.89 }
 }
 
@@ -36,6 +46,62 @@ async function embedImageAuto(out, file) {
   throw new Error('Imagem deve ser PNG ou JPG')
 }
 
+function extractUriLinks(page) {
+  const arr = page.node.lookupMaybe(PDFName.of('Annots'), PDFArray)
+  const links = []
+  if (!arr) return links
+  for (let i = 0; i < arr.size(); i++) {
+    const annot = arr.lookup(i, PDFDict)
+    const subtype = annot.lookupMaybe(PDFName.of('Subtype'), PDFName)
+    if (String(subtype) === '/Link') {
+      const action = annot.lookupMaybe(PDFName.of('A'), PDFDict)
+      if (action) {
+        const s = action.lookupMaybe(PDFName.of('S'), PDFName)
+        if (String(s) === '/URI') {
+          const rect = annot.lookupMaybe(PDFName.of('Rect'), PDFArray)
+          let urlStr
+          const uriStr = action.lookupMaybe(PDFName.of('URI'), PDFString)
+          if (uriStr) urlStr = uriStr.asString()
+          else {
+            const uriHex = action.lookupMaybe(PDFName.of('URI'), PDFHexString)
+            if (uriHex) urlStr = uriHex.decodeText()
+          }
+          if (rect && urlStr) {
+            const x1 = rect.get(0).asNumber()
+            const y1 = rect.get(1).asNumber()
+            const x2 = rect.get(2).asNumber()
+            const y2 = rect.get(3).asNumber()
+            links.push({ rectVals: [x1, y1, x2, y2], urlStr })
+          }
+        }
+      }
+    }
+  }
+  return links
+}
+
+function addScaledLinks(out, newPage, links, sx, sy) {
+  let annots = newPage.node.lookupMaybe(PDFName.of('Annots'), PDFArray)
+  if (!annots) {
+    annots = out.context.obj([])
+    newPage.node.set(PDFName.of('Annots'), annots)
+  }
+  for (const { rectVals, urlStr } of links) {
+    const x1 = rectVals[0] * sx
+    const y1 = rectVals[1] * sy
+    const x2 = rectVals[2] * sx
+    const y2 = rectVals[3] * sy
+    const annotDict = out.context.obj({
+      Type: PDFName.of('Annot'),
+      Subtype: PDFName.of('Link'),
+      Rect: out.context.obj([x1, y1, x2, y2]),
+      Border: out.context.obj([0, 0, 0]),
+      A: out.context.obj({ Type: PDFName.of('Action'), S: PDFName.of('URI'), URI: PDFString.of(urlStr) })
+    })
+    annots.push(annotDict)
+  }
+}
+
 async function buildPdf(coverFile, journalPdf, backFile, target) {
   const out = await PDFDocument.create()
 
@@ -43,13 +109,33 @@ async function buildPdf(coverFile, journalPdf, backFile, target) {
   const coverPage = out.addPage([target.width, target.height])
   coverPage.drawImage(coverImg, { x: 0, y: 0, width: target.width, height: target.height })
 
-  const journalCopies = await out.copyPages(journalPdf, journalPdf.getPageIndices())
-  journalCopies.forEach(p => { out.addPage(p); p.setSize(target.width, target.height) })
+  const jIndices = journalPdf.getPageIndices()
+  for (const jIdx of jIndices) {
+    const jPage = journalPdf.getPage(jIdx)
+    const links = extractUriLinks(jPage)
+    const [embedded] = await out.embedPages([jPage])
+    const page = out.addPage([target.width, target.height])
+    page.drawPage(embedded, { x: 0, y: 0, width: target.width, height: target.height })
+    const size = jPage.getSize()
+    const sx = target.width / size.width
+    const sy = target.height / size.height
+    addScaledLinks(out, page, links, sx, sy)
+  }
 
   if ((backFile.mimetype || '').startsWith('application/pdf')) {
     const backPdf = await PDFDocument.load(backFile.buffer)
-    const backCopies = await out.copyPages(backPdf, backPdf.getPageIndices())
-    backCopies.forEach(p => { out.addPage(p); p.setSize(target.width, target.height) })
+    const bIndices = backPdf.getPageIndices()
+    for (const bIdx of bIndices) {
+      const bPage = backPdf.getPage(bIdx)
+      const links = extractUriLinks(bPage)
+      const [embedded] = await out.embedPages([bPage])
+      const page = out.addPage([target.width, target.height])
+      page.drawPage(embedded, { x: 0, y: 0, width: target.width, height: target.height })
+      const size = bPage.getSize()
+      const sx = target.width / size.width
+      const sy = target.height / size.height
+      addScaledLinks(out, page, links, sx, sy)
+    }
   } else {
     const backImg = await embedImageAuto(out, backFile)
     const backPage = out.addPage([target.width, target.height])
@@ -130,11 +216,12 @@ app.post('/api/gerador', upload.fields([
     })
     zip.outputStream.pipe(res)
 
-    const target = await computeTargetSize()
+    // Define o tamanho alvo com base na contracapa escolhida para este par
     for (let i = 0; i < covers.length; i++) {
       const cover = covers[i]
       const backIdx = pickBackIndex(i, covers.length, backs.length)
       const back = backs[backIdx]
+      const target = await computeTargetSizeFromBack(back)
       const pdfBytes = await buildPdf(cover, journalPdf, back, target)
       const name = `${sanitizeBaseName(cover.originalname)} - ${sanitizeBaseName(journal.originalname)}.pdf`
       zip.addBuffer(Buffer.from(pdfBytes), name, { compress: true })
