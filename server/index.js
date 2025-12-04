@@ -16,7 +16,14 @@ app.use(express.static(path.join(process.cwd(), 'public')))
 const progressMap = new Map()
 const listenersMap = new Map()
 
-async function computeTargetSize(journalPdf, backBuffers) {
+function isPng(buf) {
+  return buf && buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47
+}
+function isJpg(buf) {
+  return buf && buf.length > 2 && buf[0] === 0xFF && buf[1] === 0xD8
+}
+
+async function computeTargetSize(journalPdf, backFiles) {
   const jp = journalPdf.getPages()
   let maxW = jp.length ? jp[0].getSize().width : 595.28
   let maxH = jp.length ? jp[0].getSize().height : 841.89
@@ -25,32 +32,48 @@ async function computeTargetSize(journalPdf, backBuffers) {
     maxW = Math.max(maxW, s.width)
     maxH = Math.max(maxH, s.height)
   }
-  for (const buf of backBuffers) {
+  for (const f of backFiles) {
     try {
-      const backPdf = await PDFDocument.load(buf)
-      for (const bp of backPdf.getPages()) {
-        const s = bp.getSize()
-        maxW = Math.max(maxW, s.width)
-        maxH = Math.max(maxH, s.height)
+      if ((f.mimetype || '').startsWith('application/pdf')) {
+        const backPdf = await PDFDocument.load(f.buffer)
+        for (const bp of backPdf.getPages()) {
+          const s = bp.getSize()
+          maxW = Math.max(maxW, s.width)
+          maxH = Math.max(maxH, s.height)
+        }
       }
     } catch {}
   }
   return { width: maxW, height: maxH }
 }
 
-async function buildPdf(coverBuf, journalPdf, backPdfBytes, target) {
+async function embedImageAuto(out, file) {
+  const buf = file.buffer
+  const mt = file.mimetype || ''
+  if (mt === 'image/png' || isPng(buf)) return out.embedPng(buf)
+  if (mt === 'image/jpeg' || mt === 'image/jpg' || isJpg(buf)) return out.embedJpg(buf)
+  throw new Error('Imagem deve ser PNG ou JPG')
+}
+
+async function buildPdf(coverFile, journalPdf, backFile, target) {
   const out = await PDFDocument.create()
 
-  const coverImg = await out.embedPng(coverBuf)
+  const coverImg = await embedImageAuto(out, coverFile)
   const coverPage = out.addPage([target.width, target.height])
   coverPage.drawImage(coverImg, { x: 0, y: 0, width: target.width, height: target.height })
 
   const journalCopies = await out.copyPages(journalPdf, journalPdf.getPageIndices())
   journalCopies.forEach(p => { out.addPage(p); p.setSize(target.width, target.height) })
 
-  const backPdf = await PDFDocument.load(backPdfBytes)
-  const backCopies = await out.copyPages(backPdf, backPdf.getPageIndices())
-  backCopies.forEach(p => { out.addPage(p); p.setSize(target.width, target.height) })
+  if ((backFile.mimetype || '').startsWith('application/pdf')) {
+    const backPdf = await PDFDocument.load(backFile.buffer)
+    const backCopies = await out.copyPages(backPdf, backPdf.getPageIndices())
+    backCopies.forEach(p => { out.addPage(p); p.setSize(target.width, target.height) })
+  } else {
+    const backImg = await embedImageAuto(out, backFile)
+    const backPage = out.addPage([target.width, target.height])
+    backPage.drawImage(backImg, { x: 0, y: 0, width: target.width, height: target.height })
+  }
 
   return await out.save()
 }
@@ -105,8 +128,8 @@ app.post('/api/gerador', upload.fields([
     const backs = (req.files?.backs || [])
 
     if (!journal) return res.status(400).json({ error: 'Arquivo do Jornal (.pdf) é obrigatório' })
-    if (covers.length < 1) return res.status(400).json({ error: 'Envie pelo menos uma Capa (.png)' })
-    if (backs.length < 1) return res.status(400).json({ error: 'Envie pelo menos uma Contracapa (.png)' })
+    if (covers.length < 1) return res.status(400).json({ error: 'Envie pelo menos uma Capa (PNG/JPG)' })
+    if (backs.length < 1) return res.status(400).json({ error: 'Envie pelo menos uma Contracapa (PDF/PNG/JPG)' })
 
     const jobId = String(Date.now()) + '-' + Math.random().toString(36).slice(2)
     res.setHeader('x-job-id', jobId)
@@ -126,12 +149,12 @@ app.post('/api/gerador', upload.fields([
     })
     archive.pipe(res)
 
-    const target = await computeTargetSize(journalPdf, backs.map(b => b.buffer))
+    const target = await computeTargetSize(journalPdf, backs)
     for (let i = 0; i < covers.length; i++) {
       const cover = covers[i]
       const backIdx = pickBackIndex(i, covers.length, backs.length)
       const back = backs[backIdx]
-      const pdfBytes = await buildPdf(cover.buffer, journalPdf, back.buffer, target)
+      const pdfBytes = await buildPdf(cover, journalPdf, back, target)
       const name = `${sanitizeBaseName(cover.originalname)} - ${sanitizeBaseName(journal.originalname)}.pdf`
       archive.append(Buffer.from(pdfBytes), { name })
       setProgress(jobId, { processed: i + 1, total })

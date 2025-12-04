@@ -10,7 +10,7 @@ function showStep(n) {
 const coversInput = document.getElementById('covers')
 const coversCount = document.getElementById('covers-count')
 coversInput.addEventListener('change', () => {
-  coversFiles = Array.from(coversInput.files || []).filter(f => f.type === 'image/png')
+  coversFiles = Array.from(coversInput.files || []).filter(f => f.type === 'image/png' || f.type === 'image/jpeg')
   coversCount.textContent = String(coversFiles.length)
 })
 document.getElementById('next-1').addEventListener('click', () => {
@@ -39,7 +39,7 @@ document.getElementById('next-2').addEventListener('click', () => {
 const backsInput = document.getElementById('backs')
 const backsCount = document.getElementById('backs-count')
 backsInput.addEventListener('change', () => {
-  backsFiles = Array.from(backsInput.files || []).filter(f => f.type === 'application/pdf')
+  backsFiles = Array.from(backsInput.files || []).filter(f => f.type === 'application/pdf' || f.type === 'image/png' || f.type === 'image/jpeg')
   backsCount.textContent = String(backsFiles.length)
 })
 document.getElementById('prev-3').addEventListener('click', () => showStep(2))
