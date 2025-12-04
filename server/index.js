@@ -4,7 +4,7 @@ import multer from 'multer'
 import archiver from 'archiver'
 import { PDFDocument } from 'pdf-lib'
 import path from 'path'
-import { sanitizeBaseName, pickBackIndex, zipSafeName } from './lib.js'
+import { sanitizeBaseName, pickBackIndex } from './lib.js'
 
 const app = express()
 const upload = multer({ storage: multer.memoryStorage() })
@@ -47,8 +47,12 @@ async function buildPdf(coverFile, journalPdf, backFile, target) {
 
   if ((backFile.mimetype || '').startsWith('application/pdf')) {
     const backPdf = await PDFDocument.load(backFile.buffer)
-    const backCopies = await out.copyPages(backPdf, backPdf.getPageIndices())
-    backCopies.forEach(p => { out.addPage(p); p.setSize(target.width, target.height) })
+    const indices = backPdf.getPageIndices()
+    for (const idx of indices) {
+      const [embedded] = await out.embedPages([backPdf.getPage(idx)])
+      const page = out.addPage([target.width, target.height])
+      page.drawPage(embedded, { x: 0, y: 0, width: target.width, height: target.height })
+    }
   } else {
     const backImg = await embedImageAuto(out, backFile)
     const backPage = out.addPage([target.width, target.height])
@@ -135,7 +139,7 @@ app.post('/api/gerador', upload.fields([
       const backIdx = pickBackIndex(i, covers.length, backs.length)
       const back = backs[backIdx]
       const pdfBytes = await buildPdf(cover, journalPdf, back, target)
-      const name = `${zipSafeName(cover.originalname)} - ${zipSafeName(journal.originalname)}.pdf`
+      const name = `${sanitizeBaseName(cover.originalname)} - ${sanitizeBaseName(journal.originalname)}.pdf`
       archive.append(Buffer.from(pdfBytes), { name })
       setProgress(jobId, { processed: i + 1, total })
     }
