@@ -5,6 +5,10 @@ let backsFiles = []
 
 function showStep(n) {
   steps.forEach((el, i) => { el.hidden = i !== (n - 1) })
+  const dots = Array.from(document.querySelectorAll('#step-dots .dot'))
+  dots.forEach((d, i) => {
+    if (i === (n - 1)) d.classList.add('active'); else d.classList.remove('active')
+  })
 }
 
 const coversInput = document.getElementById('covers')

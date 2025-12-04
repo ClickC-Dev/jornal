@@ -23,10 +23,8 @@ function isJpg(buf) {
   return buf && buf.length > 2 && buf[0] === 0xFF && buf[1] === 0xD8
 }
 
-async function computeTargetSize(journalPdf) {
-  const jp = journalPdf.getPages()
-  const size = jp.length ? jp[0].getSize() : { width: 595.28, height: 841.89 }
-  return { width: size.width, height: size.height }
+async function computeTargetSize() {
+  return { width: 595.28, height: 841.89 }
 }
 
 async function embedImageAuto(out, file) {
@@ -131,7 +129,7 @@ app.post('/api/gerador', upload.fields([
     })
     archive.pipe(res)
 
-    const target = await computeTargetSize(journalPdf)
+    const target = await computeTargetSize()
     for (let i = 0; i < covers.length; i++) {
       const cover = covers[i]
       const backIdx = pickBackIndex(i, covers.length, backs.length)

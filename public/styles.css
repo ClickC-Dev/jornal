@@ -11,9 +11,10 @@ body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI
 .container { max-width: 860px; margin: 40px auto; padding: 0 20px; }
 h1 { text-align: center; margin-bottom: 24px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.card p { text-align: center; }
 .dropzone { display: block; border: 2px dashed #d1d5db; border-radius: 12px; padding: 28px; text-align: center; color: var(--muted); cursor: pointer; }
 .dropzone input { display: none; }
-.counter { margin-top: 12px; color: var(--muted); }
+.counter { margin-top: 12px; color: var(--muted); text-align: center; }
 .primary { background: var(--primary); color: white; border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
 .primary[disabled] { opacity: .5; cursor: not-allowed; }
 .ghost { background: transparent; color: var(--primary); border: 1px solid var(--primary); border-radius: 10px; padding: 10px 16px; cursor: pointer; }
@@ -25,3 +26,6 @@ h1 { text-align: center; margin-bottom: 24px; }
 .footer { margin-top: 24px; text-align: center; color: var(--muted); }
 .footer a { color: var(--muted); text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
+.dots { margin-top: 12px; display: flex; justify-content: center; gap: 12px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: #d1d5db; }
+.dot.active { background: var(--primary); }
