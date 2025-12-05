@@ -13,6 +13,7 @@ function showStep(n) {
 
 const coversInput = document.getElementById('covers')
 const coversCount = document.getElementById('covers-count')
+coversCount.insertAdjacentHTML('afterend','')
 coversInput.addEventListener('change', () => {
   coversFiles = Array.from(coversInput.files || []).filter(f => f.type === 'image/png' || f.type === 'image/jpeg')
   coversCount.textContent = String(coversFiles.length)
@@ -20,6 +21,23 @@ coversInput.addEventListener('change', () => {
 document.getElementById('next-1').addEventListener('click', () => {
   if (coversFiles.length === 0) return
   showStep(2)
+})
+
+const modalEl = document.getElementById('modal')
+const modalTitle = document.getElementById('modal-title')
+const modalContent = document.getElementById('modal-content')
+const modalClose = document.getElementById('modal-close')
+modalClose.addEventListener('click', () => { modalEl.hidden = true })
+
+function openFilesModal(title, files) {
+  modalTitle.textContent = title
+  const items = files && files.length ? files.map(n => `<li>${n}</li>`).join('') : '<em>Sem arquivos</em>'
+  modalContent.innerHTML = `<ul>${items}</ul>`
+  modalEl.hidden = false
+}
+
+document.getElementById('covers-view').addEventListener('click', () => {
+  openFilesModal('Capas enviadas', coversFiles.map(f => f.name))
 })
 
 const journalInput = document.getElementById('journal')
@@ -34,6 +52,9 @@ journalInput.addEventListener('change', () => {
     journalName.textContent = 'Nenhum arquivo selecionado'
   }
 })
+document.getElementById('journal-view').addEventListener('click', () => {
+  openFilesModal('Jornal enviado', journalFile ? [journalFile.name] : [])
+})
 document.getElementById('prev-2').addEventListener('click', () => showStep(1))
 document.getElementById('next-2').addEventListener('click', () => {
   if (!journalFile) return
@@ -46,6 +67,9 @@ backsInput.addEventListener('change', () => {
   backsFiles = Array.from(backsInput.files || []).filter(f => f.type === 'application/pdf' || f.type === 'image/png' || f.type === 'image/jpeg')
   backsCount.textContent = String(backsFiles.length)
 })
+document.getElementById('backs-view').addEventListener('click', () => {
+  openFilesModal('Contracapas enviadas', backsFiles.map(f => f.name))
+})
 document.getElementById('prev-3').addEventListener('click', () => showStep(2))
 document.getElementById('next-3').addEventListener('click', () => {
   if (backsFiles.length === 0) return
@@ -55,6 +79,17 @@ document.getElementById('next-3').addEventListener('click', () => {
 const progressBar = document.getElementById('progress-bar')
 const progressText = document.getElementById('progress-text')
 
+function getApiBase() {
+  const params = new URLSearchParams(window.location.search)
+  const q = params.get('api')
+  if (q) { try { localStorage.setItem('apiBase', q) } catch {} return q }
+  try {
+    const s = localStorage.getItem('apiBase')
+    if (s) return s
+  } catch {}
+  return window.API_BASE || ''
+}
+
 async function generate() {
   showStep(4)
   const form = new FormData()
@@ -63,11 +98,12 @@ async function generate() {
   backsFiles.forEach(f => form.append('backs', f))
 
   // health check opcional
-  try { await fetch(`${window.API_BASE}/api/health`).catch(() => {}) } catch {}
+  const API = getApiBase()
+  try { await fetch(`${API}/api/health`).catch(() => {}) } catch {}
 
   let res
   try {
-    res = await fetch(`${window.API_BASE}/api/gerador`, { method: 'POST', body: form })
+    res = await fetch(`${API}/api/gerador`, { method: 'POST', body: form })
   } catch (networkErr) {
     alert('Servidor indisponível ou bloqueio de upload. Verifique sua conexão e tente novamente.')
     showStep(3)
@@ -75,7 +111,7 @@ async function generate() {
   }
   const jobId = res.headers.get('x-job-id')
   if (jobId) {
-    const sse = new EventSource(`${window.API_BASE}/api/gerador/progresso?jobId=${encodeURIComponent(jobId)}`)
+    const sse = new EventSource(`${API}/api/gerador/progresso?jobId=${encodeURIComponent(jobId)}`)
     sse.addEventListener('progress', e => {
       try {
         const { percent } = JSON.parse(e.data)

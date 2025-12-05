@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Gerador de Jornal Digital</title>
+    <link rel="icon" href="https://media.canva.com/v2/image-resize/format:PNG/height:550/quality:100/uri:ifs%3A%2F%2FM%2Ff2e3fd15-5734-490f-b2e8-0f8417066222/watermark:F/width:550?csig=AAAAAAAAAAAAAAAAAAAAAGGgldpPemU0XinHhGdu8OappQxOLejgiUJ_aKuBzkxW&exp=1764961135&osig=AAAAAAAAAAAAAAAAAAAAAGjUhOPkWQ5BaammfGv9Synzg7UFpg0AzV71ZecEbBWQ&signer=media-rpc&x-canva-quality=thumbnail_large" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -18,7 +19,7 @@
               <input id="covers" type="file" accept="image/png,image/jpeg" multiple />
               <span>Clique para enviar ou arraste e solte<br/>Formatos aceitos: .png, .jpg</span>
             </label>
-            <div class="counter"><span id="covers-count">0</span> capas selecionadas</div>
+            <div class="counter"><span id="covers-count">0</span> capas selecionadas <button id="covers-view" class="icon-btn" title="Ver arquivos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" fill="currentColor"/></svg></button></div>
             <div class="actions">
               <button id="next-1" class="primary">Próximo</button>
             </div>
@@ -32,7 +33,7 @@
               <input id="journal" type="file" accept="application/pdf" />
               <span>Envie o PDF do Jornal</span>
             </label>
-            <div class="counter" id="journal-name">Nenhum arquivo selecionado</div>
+            <div class="counter" id="journal-name">Nenhum arquivo selecionado <button id="journal-view" class="icon-btn" title="Ver arquivo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" fill="currentColor"/></svg></button></div>
             <div class="actions space">
               <button id="prev-2" class="ghost">Voltar</button>
               <button id="next-2" class="primary">Próximo</button>
@@ -47,10 +48,10 @@
               <input id="backs" type="file" accept="application/pdf,image/png,image/jpeg" multiple />
               <span>Envie uma ou várias Contracapas (.pdf com links)</span>
             </label>
-            <div class="counter"><span id="backs-count">0</span> contracapas selecionadas</div>
+            <div class="counter"><span id="backs-count">0</span> contracapas selecionadas <button id="backs-view" class="icon-btn" title="Ver arquivos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" fill="currentColor"/></svg></button></div>
             <div class="actions space">
               <button id="prev-3" class="ghost">Voltar</button>
-              <button id="next-3" class="primary">Próximo</button>
+              <button id="next-3" class="primary">Gerar</button>
             </div>
           </div>
         </div>
@@ -85,7 +86,14 @@
         <span class="dot"></span>
         <span class="dot"></span>
       </div>
-      <footer class="footer">Criado pela ClickC</footer>
+      <footer class="footer"><img class="footer-logo" src="https://media.canva.com/v2/image-resize/format:PNG/height:550/quality:100/uri:ifs%3A%2F%2FM%2Ff2e3fd15-5734-490f-b2e8-0f8417066222/watermark:F/width:550?csig=AAAAAAAAAAAAAAAAAAAAAGGgldpPemU0XinHhGdu8OappQxOLejgiUJ_aKuBzkxW&exp=1764961135&osig=AAAAAAAAAAAAAAAAAAAAAGjUhOPkWQ5BaammfGv9Synzg7UFpg0AzV71ZecEbBWQ&signer=media-rpc&x-canva-quality=thumbnail_large" alt="ClickC" /> Criado pela ClickC</footer>
+      <div id="modal" class="modal" hidden>
+        <div class="modal-card">
+          <h3 id="modal-title">Arquivos enviados</h3>
+          <div id="modal-content"></div>
+          <div class="actions"><button id="modal-close" class="ghost">Fechar</button></div>
+        </div>
+      </div>
     </div>
     <script>window.API_BASE = ''</script>
     <script src="/app.js"></script>
